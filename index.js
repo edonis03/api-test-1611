@@ -3,6 +3,12 @@ import youtubedl from 'youtube-dl-exec';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
+import ffmpegPath from 'ffmpeg-static';
+import { FFmpeg } from '@ffmpeg/ffmpeg';
+import { fetchFile } from '@ffmpeg/util';
+
+import lame from 'lamejs';
+import prism from 'prism-media';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -35,7 +41,7 @@ app.get('/', (req, res) => {
     });
 });
 
-// Download MP3
+// Download audio (NO FFMPEG)
 app.post('/download', async (req, res) => {
     const url = req.body.url;
     if (!url) {
@@ -45,17 +51,19 @@ app.post('/download', async (req, res) => {
         });
     }
 
+    // 🔥 IMPORTANT: remove extractAudio & audioFormat (FFmpeg required)
     const output = path.resolve(downloadsPath, "%(title)s.%(ext)s");
 
     try {
         await youtubedl(url, {
             extractAudio: true,
-            audioFormat: "mp3",
+            audioFormat: 'mp3',
+            ffmpegLocation: ffmpegPath,
             output
         });
 
         res.json({
-            message: "Audio downloaded successfully!",
+            message: "Audio downloaded successfully! Converting to MP3...",
             files: getDownloadedFiles()
         });
 
@@ -67,6 +75,8 @@ app.post('/download', async (req, res) => {
         });
     }
 });
+
+
 
 // Delete file
 app.post('/delete/:filename', (req, res) => {
