@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>YouTube MP3 Downloader</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 30px;
+        }
+
+        input {
+            padding: 10px;
+            width: 400px;
+        }
+
+        button {
+            padding: 10px 20px;
+            cursor: pointer;
+        }
+
+        #message {
+            font-weight: bold;
+            margin: 15px;
+            color: green;
+        }
+
+        ul {
+            list-style: none;
+            padding: 0;
+            margin-top: 20px;
+        }
+
+        li {
+            margin: 12px 0;
+        }
+
+        a {
+            text-decoration: none;
+            color: white;
+            background: #28a745;
+            padding: 6px 12px;
+            border-radius: 4px;
+        }
+
+        a:hover {
+            background: #218838;
+        }
+
+        .delete-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            margin-left: 8px;
+            font-size: 20px;
+        }
+
+        .delete-btn:hover {
+            color: red;
+        }
+
+        /* Loader */
+        #loader {
+            display: none;
+            margin: 20px auto;
+            border: 6px solid #f3f3f3;
+            border-top: 6px solid #28a745;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+
+</head>
+<body>
+
+    <h1>YouTube MP3 Downloader</h1>
+
+    <form id="downloadForm">
+        <input type="text" id="urlInput" placeholder="Paste YouTube URL here" required>
+        <button type="submit">Download</button>
+    </form>
+
+    <p id="message"><%= message %></p>
+
+    <!-- Circular Loader -->
+    <div id="loader"></div>
+
+    <h2>Downloaded Files</h2>
+
+    <ul id="fileList">
+        <% files.forEach(file => { %>
+            <li>
+                <a href="/downloads/<%= file %>" download><%= file %></a>
+                <button class="delete-btn" onclick="deleteFile('<%= file %>')">🗑️</button>
+            </li>
+        <% }) %>
+    </ul>
+
+
+
+<script>
+// Download handler (AJAX, no URL change)
+document.getElementById("downloadForm").addEventListener("submit", async function(e) {
+    e.preventDefault();
+
+    const url = document.getElementById("urlInput").value;
+
+    // Show loader
+    document.getElementById("loader").style.display = "block";
+    document.getElementById("message").innerText = "";
+
+    const res = await fetch("/download", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url })
+    });
+
+    const data = await res.json();
+
+    // Hide loader
+    document.getElementById("loader").style.display = "none";
+
+    document.getElementById("message").innerText = data.message;
+
+    updateList(data.files);
+});
+
+// Delete handler
+async function deleteFile(filename) {
+    const res = await fetch("/delete/" + filename, {
+        method: "POST"
+    });
+
+    const data = await res.json();
+    document.getElementById("message").innerText = data.message;
+
+    updateList(data.files);
+}
+
+// Update the list dynamically
+function updateList(files) {
+    const list = document.getElementById("fileList");
+    list.innerHTML = "";
+
+    files.forEach(file => {
+        list.innerHTML += `
+            <li>
+                <a href="/downloads/${file}" download>${file}</a>
+                <button class="delete-btn" onclick="deleteFile('${file}')">🗑️</button>
+            </li>
+        `;
+    });
+}
+</script>
+
+</body>
+</html>
