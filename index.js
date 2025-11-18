@@ -100,7 +100,8 @@ app.post("/download", async (req, res) => {
         await youtubedl(videoUrl, {
             extractAudio: true,
             audioFormat: "mp3",
-            output: filename
+            output: filename,
+            cookies: cookiesPath
         });
 
         // 5. Invia il file e poi elimina
