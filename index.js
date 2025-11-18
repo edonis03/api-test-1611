@@ -4,11 +4,8 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import ffmpegPath from 'ffmpeg-static';
-import { FFmpeg } from '@ffmpeg/ffmpeg';
-import { fetchFile } from '@ffmpeg/util';
 
-import lame from 'lamejs';
-import prism from 'prism-media';
+process.env.YOUTUBE_DL_EXEC_PATH = path.resolve('./bin/yt-dlp');
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
