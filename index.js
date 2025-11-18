@@ -6,6 +6,7 @@ import { fileURLToPath } from 'url';
 import ffmpegPath from 'ffmpeg-static';
 
 process.env.YOUTUBE_DL_EXEC_PATH = path.resolve('./bin/yt-dlp');
+const cookiesPath = path.resolve('./cookies.txt'); // percorso del tuo cookies.txt
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -56,6 +57,7 @@ app.post('/download', async (req, res) => {
             extractAudio: true,
             audioFormat: 'mp3',
             ffmpegLocation: ffmpegPath,
+            cookiefile: cookiesPath, // <-- qui usi i cookie
             output
         });
 
