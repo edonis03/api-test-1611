@@ -57,7 +57,7 @@ app.post('/download', async (req, res) => {
             extractAudio: true,
             audioFormat: 'mp3',
             ffmpegLocation: ffmpegPath,
-            cookiefile: cookiesPath, // <-- qui usi i cookie
+            cookies: cookiesPath, // <-- qui usi i cookie
             output
         });
 
