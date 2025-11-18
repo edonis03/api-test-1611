@@ -49,6 +49,7 @@ app.post("/search", async (req, res) => {
         const result = await youtubedl(`ytsearch5:${query}`, {
             dumpSingleJson: true,
             noCheckCertificates: true,
+            skipDownload: true,   // 🔑 evita download
             noWarnings: true,
             preferFreeFormats: true,
             cookies: cookiesPath
@@ -105,7 +106,7 @@ app.post("/download", async (req, res) => {
         });
 
         // 5. Invia il file e poi elimina
-        // lato server
+        
 res.setHeader("X-Video-Title", title);
 
         res.download(filename, `${title}.mp3`, (err) => {
