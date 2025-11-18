@@ -39,8 +39,90 @@ app.get('/', (req, res) => {
     });
 });
 
+// Ricerca per titolo
+app.post("/search", async (req, res) => {
+    const query = req.body.query;
+    if (!query) return res.json({ message: "Inserisci un titolo!" });
+
+    try {
+        // usa yt-dlp per cercare solo 5 risultati
+        const result = await youtubedl(`ytsearch5:${query}`, {
+            dumpSingleJson: true,
+            noCheckCertificates: true,
+            noWarnings: true,
+            preferFreeFormats: true
+        });
+
+        const videos = result.entries.map(v => ({
+            id: v.id,
+            title: v.title.replace(/\s*\([^)]*\)/g, ""), // pulizia parentesi
+            thumbnail: v.thumbnail
+        }));
+
+        res.json({ message: "Risultati trovati", videos });
+
+    } catch (err) {
+        console.error(err);
+        res.json({ message: "Errore nella ricerca", videos: [] });
+    }
+});
+
+
+
+app.post("/download", async (req, res) => {
+
+    const id = req.body.id;
+    const url = req.body.query;
+
+    const videoUrl = id ? `https://www.youtube.com/watch?v=${id}` : url;
+
+    if (!videoUrl) return res.json({ message: "Nessun video selezionato" });
+
+    try {
+        // 1. Recupera le info del video
+        const info = await youtubedl(videoUrl, {
+            dumpSingleJson: true,
+            noCheckCertificates: true,
+            noWarnings: true,
+            preferFreeFormats: true
+        });
+
+        // 2. Pulisci il titolo e rimuovi caratteri non validi
+        let title = info.title.replace(/\s*\([^)]*\)/g, "").trim();
+        title = title.replace(/[<>:"/\\|?*]/g, ""); // 🔑
+
+        // 3. Nome file semplice
+        const filename = `${title}.mp3`;
+
+        // 4. Scarica l’audio
+        await youtubedl(videoUrl, {
+            extractAudio: true,
+            audioFormat: "mp3",
+            output: filename
+        });
+
+        // 5. Invia il file e poi elimina
+        // lato server
+res.setHeader("X-Video-Title", title);
+
+        res.download(filename, `${title}.mp3`, (err) => {
+            if (err) console.error("Errore nell'invio:", err);
+            fs.unlink(filename, (unlinkErr) => {
+                if (unlinkErr) console.error("Errore nell'eliminazione:", unlinkErr);
+            });
+        });
+
+    } catch (err) {
+        console.error(err);
+        res.json({ message: "Errore nel download" });
+    }
+});
+
+
+
+
 // Download audio (NO FFMPEG)
-app.post('/download', async (req, res) => {
+app.post('/download-bubi', async (req, res) => {
     const url = req.body.url;
     if (!url) {
         return res.json({ 
@@ -61,9 +143,21 @@ app.post('/download', async (req, res) => {
             output
         });
 
+                // dopo il download, rinomina i file rimuovendo le parentesi
+        const files = getDownloadedFiles().map(file => {
+            const cleaned = file.replace(/\s*\([^)]*\)/g, ""); // regex che elimina (…)
+            if (cleaned !== file) {
+                const oldPath = path.resolve(downloadsPath, file);
+                const newPath = path.resolve(downloadsPath, cleaned);
+                fs.renameSync(oldPath, newPath);
+                return cleaned;
+            }
+            return file;
+        });
+
         res.json({
             message: "Audio downloaded successfully! Converting to MP3...",
-            files: getDownloadedFiles()
+            files
         });
 
     } catch (err) {

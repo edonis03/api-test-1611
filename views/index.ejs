@@ -77,6 +77,26 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+
+        #results {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr); /* 5 colonne */
+            gap: 20px; /* spazio tra gli elementi */
+            margin-top: 20px;
+        }
+
+        .result-item {
+            text-align: center;
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 6px;
+            background: #f9f9f9;
+        }
+
+        .result-item img {
+            max-width: 100%;
+            border-radius: 4px;
+        }
     </style>
 
 </head>
@@ -84,9 +104,9 @@
 
     <h1>YouTube MP3 Downloader</h1>
 
-    <form id="downloadForm">
-        <input type="text" id="urlInput" placeholder="Paste YouTube URL here" required>
-        <button type="submit">Download</button>
+    <form id="searchForm">
+        <input type="text" id="searchInput" placeholder="Search or copy a valid URL" required>
+        <button type="submit">Search</button>
     </form>
 
     <p id="message"><%= message %></p>
@@ -94,72 +114,113 @@
     <!-- Circular Loader -->
     <div id="loader"></div>
 
-    <h2>Downloaded Files</h2>
-
-    <ul id="fileList">
-        <% files.forEach(file => { %>
-            <li>
-                <a href="/downloads/<%= file %>" download><%= file %></a>
-                <button class="delete-btn" onclick="deleteFile('<%= file %>')">🗑️</button>
-            </li>
-        <% }) %>
-    </ul>
+    <div id="results"></div>
 
 
 
 <script>
-// Download handler (AJAX, no URL change)
-document.getElementById("downloadForm").addEventListener("submit", async function(e) {
+
+const loader = document.getElementById("loader");
+
+document.getElementById("searchForm").addEventListener("submit", async e => {
     e.preventDefault();
+    const query = document.getElementById("searchInput").value.trim();
 
-    const url = document.getElementById("urlInput").value;
-
-    // Show loader
-    document.getElementById("loader").style.display = "block";
+    // Mostra loader
+    loader.style.display = "block";
     document.getElementById("message").innerText = "";
 
-    const res = await fetch("/download", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url })
-    });
+    if (query.startsWith("http")) {
+        fetch("/download", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ query })
+        })
+        .then(res => {
+            const title = res.headers.get("X-Video-Title") || "video";
+            return res.blob().then(blob => ({ blob, title }));
+        })
+        .then(({ blob, title }) => {
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `${title}.mp3`;
+            a.click();
+            a.remove();
+        })
+        .finally(() => {
+            // Nascondi loader
+            loader.style.display = "none";
+        });
+        return;
+    }
 
-    const data = await res.json();
+    // 🔑 Altrimenti fai la ricerca
+    try {
+        const res = await fetch("/search", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ query })
+        });
 
-    // Hide loader
-    document.getElementById("loader").style.display = "none";
+        const data = await res.json();
+        const resultsDiv = document.getElementById("results");
+        resultsDiv.innerHTML = "";
 
-    document.getElementById("message").innerText = data.message;
-
-    updateList(data.files);
+        data.videos.forEach(v => {
+            resultsDiv.innerHTML += `
+                <div style="margin:10px;">
+                    <img src="${v.thumbnail}" width="200"><br>
+                    <strong>${v.title}</strong><br>
+                    <button onclick="download('${v.id}', '${v.title.replace(/'/g, "\\'")}')">Scarica MP3</button>
+                </div>
+            `;
+        });
+    } finally {
+        // Nascondi loader
+        loader.style.display = "none";
+    }
 });
 
-// Delete handler
-async function deleteFile(filename) {
-    const res = await fetch("/delete/" + filename, {
-        method: "POST"
+function download(id, title) {
+    loader.style.display = "block"; // mostra loader durante download
+
+    fetch("/download", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, title })
+    })
+    .then(res => res.blob())
+    .then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${title}.mp3`;
+        a.click();
+        a.remove();
+    })
+    .finally(() => {
+        loader.style.display = "none"; // nascondi loader
     });
-
-    const data = await res.json();
-    document.getElementById("message").innerText = data.message;
-
-    updateList(data.files);
 }
 
-// Update the list dynamically
-function updateList(files) {
-    const list = document.getElementById("fileList");
-    list.innerHTML = "";
 
-    files.forEach(file => {
-        list.innerHTML += `
-            <li>
-                <a href="/downloads/${file}" download>${file}</a>
-                <button class="delete-btn" onclick="deleteFile('${file}')">🗑️</button>
-            </li>
+
+function renderResults(videos) {
+    const resultsDiv = document.getElementById("results");
+    resultsDiv.innerHTML = "";
+
+    videos.forEach(v => {
+        resultsDiv.innerHTML += `
+            <div class="result-item">
+                <img src="${v.thumbnail}" alt="${v.title}">
+                <p><strong>${v.title}</strong></p>
+                <button onclick="download('${v.id}')">Scarica MP3</button>
+            </div>
         `;
     });
 }
+
 </script>
 
 </body>
