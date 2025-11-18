@@ -50,7 +50,8 @@ app.post("/search", async (req, res) => {
             dumpSingleJson: true,
             noCheckCertificates: true,
             noWarnings: true,
-            preferFreeFormats: true
+            preferFreeFormats: true,
+            cookies: cookiesPath
         });
 
         const videos = result.entries.map(v => ({
@@ -84,7 +85,8 @@ app.post("/download", async (req, res) => {
             dumpSingleJson: true,
             noCheckCertificates: true,
             noWarnings: true,
-            preferFreeFormats: true
+            preferFreeFormats: true,
+            cookies: cookiesPath
         });
 
         // 2. Pulisci il titolo e rimuovi caratteri non validi
@@ -117,81 +119,3 @@ res.setHeader("X-Video-Title", title);
         res.json({ message: "Errore nel download" });
     }
 });
-
-
-
-
-// Download audio (NO FFMPEG)
-app.post('/download-bubi', async (req, res) => {
-    const url = req.body.url;
-    if (!url) {
-        return res.json({ 
-            message: "Please enter a URL!", 
-            files: getDownloadedFiles() 
-        });
-    }
-
-    // 🔥 IMPORTANT: remove extractAudio & audioFormat (FFmpeg required)
-    const output = path.resolve(downloadsPath, "%(title)s.%(ext)s");
-
-    try {
-        await youtubedl(url, {
-            extractAudio: true,
-            audioFormat: 'mp3',
-            ffmpegLocation: ffmpegPath,
-            cookies: cookiesPath, // <-- qui usi i cookie
-            output
-        });
-
-                // dopo il download, rinomina i file rimuovendo le parentesi
-        const files = getDownloadedFiles().map(file => {
-            const cleaned = file.replace(/\s*\([^)]*\)/g, ""); // regex che elimina (…)
-            if (cleaned !== file) {
-                const oldPath = path.resolve(downloadsPath, file);
-                const newPath = path.resolve(downloadsPath, cleaned);
-                fs.renameSync(oldPath, newPath);
-                return cleaned;
-            }
-            return file;
-        });
-
-        res.json({
-            message: "Audio downloaded successfully! Converting to MP3...",
-            files
-        });
-
-    } catch (err) {
-        console.error(err);
-        res.json({
-            message: "Failed to download audio.",
-            files: getDownloadedFiles()
-        });
-    }
-});
-
-
-
-// Delete file
-app.post('/delete/:filename', (req, res) => {
-    const filename = req.params.filename;
-
-    if (filename.includes("..")) {
-        return res.status(400).json({
-            message: "Invalid filename.",
-            files: getDownloadedFiles()
-        });
-    }
-
-    const filePath = path.join(downloadsPath, filename);
-    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-
-    res.json({
-        message: `File "${filename}" deleted successfully!`,
-        files: getDownloadedFiles()
-    });
-});
-
-// Start server
-app.listen(PORT, () =>
-    console.log(`Server running at http://localhost:${PORT}`)
-);
