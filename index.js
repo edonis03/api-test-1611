@@ -119,3 +119,9 @@ res.setHeader("X-Video-Title", title);
         res.json({ message: "Errore nel download" });
     }
 });
+
+
+// Start server
+app.listen(PORT, () =>
+    console.log(`Server running at http://localhost:${PORT}`)
+);
