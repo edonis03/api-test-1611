@@ -45,20 +45,21 @@ app.post("/search", async (req, res) => {
     if (!query) return res.json({ message: "Inserisci un titolo!" });
 
     try {
-        // usa yt-dlp per cercare solo 5 risultati
         const result = await youtubedl(`ytsearch5:${query}`, {
             dumpSingleJson: true,
             noCheckCertificates: true,
-            skipDownload: true,   // 🔑 evita download
+            skipDownload: true,
             noWarnings: true,
             preferFreeFormats: true,
-            cookies: cookiesPath
+            cookies: cookiesPath,
+            additionalArgs: ["--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36"]
         });
 
-        const videos = result.entries.map(v => ({
+        const entries = result.entries || [];
+        const videos = entries.map(v => ({
             id: v.id,
-            title: v.title.replace(/\s*\([^)]*\)/g, ""), // pulizia parentesi
-            thumbnail: v.thumbnail
+            title: v.title ? v.title.replace(/\s*\([^)]*\)/g, "") : "Sconosciuto",
+            thumbnail: v.thumbnail || ""
         }));
 
         res.json({ message: "Risultati trovati", videos });
@@ -87,7 +88,8 @@ app.post("/download", async (req, res) => {
             noCheckCertificates: true,
             noWarnings: true,
             preferFreeFormats: true,
-            cookies: cookiesPath
+            cookies: cookiesPath,
+            additionalArgs: ["--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36"]
         });
 
         // 2. Pulisci il titolo e rimuovi caratteri non validi
@@ -102,12 +104,13 @@ app.post("/download", async (req, res) => {
             extractAudio: true,
             audioFormat: "mp3",
             output: filename,
-            cookies: cookiesPath
+            cookies: cookiesPath,
+            additionalArgs: ["--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36"]
         });
 
         // 5. Invia il file e poi elimina
         
-res.setHeader("X-Video-Title", title);
+        res.setHeader("X-Video-Title", title);
 
         res.download(filename, `${title}.mp3`, (err) => {
             if (err) console.error("Errore nell'invio:", err);
