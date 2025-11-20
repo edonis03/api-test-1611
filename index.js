@@ -5,7 +5,6 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 import ffmpegPath from 'ffmpeg-static';
 
-process.env.YOUTUBE_DL_EXEC_PATH = path.resolve('./bin/yt-dlp');
 const cookiesPath = path.resolve('./cookies.txt'); // percorso del tuo cookies.txt
 
 const __filename = fileURLToPath(import.meta.url);
@@ -45,6 +44,9 @@ app.post("/search", async (req, res) => {
     if (!query) return res.json({ message: "Inserisci un titolo!" });
 
     try {
+
+        process.env.YOUTUBE_DL_EXEC_PATH = path.resolve('./bin/yt-dlp');
+
         const result = await youtubedl(`ytsearch5:${query}`, {
             dumpSingleJson: true,
             noCheckCertificates: true,
@@ -85,6 +87,9 @@ app.post("/download", async (req, res) => {
     if (!videoUrl) return res.json({ message: "Nessun video selezionato" });
 
     try {
+
+        process.env.YOUTUBE_DL_EXEC_PATH = path.resolve('./bin/yt-dlp');
+
         // 1. Recupera le info del video
         const info = await youtubedl(videoUrl, {
             dumpSingleJson: true,
@@ -105,6 +110,8 @@ app.post("/download", async (req, res) => {
         // 3. Nome file semplice
         const filename = `${title}.mp3`;
 
+        process.env.YOUTUBE_DL_EXEC_PATH = path.resolve('./bin/yt-dlp');
+        
         // 4. Scarica l’audio
         await youtubedl(videoUrl, {
             extractAudio: true,
