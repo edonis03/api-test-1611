@@ -68,6 +68,7 @@ async def search(body: SearchBody):
             "quiet": True,
             "skip_download": True,
             "nocheckcertificate": True,
+            "cookies": "cookies.txt",
             "default_search": "ytsearch5",
         }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -110,6 +111,7 @@ async def download(body: DownloadBody):
             "format": "bestaudio/best",
             "outtmpl": os.path.join(DOWNLOADS_PATH, "%(title)s.%(ext)s"),
             "quiet": True,
+            "cookies": "cookies.txt",
             "nocheckcertificate": True,
             "nopart": True  # niente file .part
         }
