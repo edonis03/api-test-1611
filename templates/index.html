@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>YouTube MP3 Downloader</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 30px;
+        }
+
+        input {
+            padding: 10px;
+            width: 400px;
+        }
+
+        button {
+            padding: 10px 20px;
+            cursor: pointer;
+        }
+
+        #message {
+            font-weight: bold;
+            margin: 15px;
+            color: green;
+        }
+
+        ul {
+            list-style: none;
+            padding: 0;
+            margin-top: 20px;
+        }
+
+        li {
+            margin: 12px 0;
+        }
+
+        a {
+            text-decoration: none;
+            color: white;
+            background: #28a745;
+            padding: 6px 12px;
+            border-radius: 4px;
+        }
+
+        a:hover {
+            background: #218838;
+        }
+
+        .delete-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            margin-left: 8px;
+            font-size: 20px;
+        }
+
+        .delete-btn:hover {
+            color: red;
+        }
+
+        /* Loader */
+        #loader {
+            display: none;
+            margin: 20px auto;
+            border: 6px solid #f3f3f3;
+            border-top: 6px solid #28a745;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        #results {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr); /* 5 colonne */
+            gap: 20px; /* spazio tra gli elementi */
+            margin-top: 20px;
+        }
+
+        .result-item {
+            text-align: center;
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 6px;
+            background: #f9f9f9;
+        }
+
+        .result-item img {
+            max-width: 100%;
+            border-radius: 4px;
+        }
+    </style>
+
+</head>
+<body>
+
+    <h1>YouTube MP3 Downloader</h1>
+
+    <form id="searchForm">
+        <input type="text" id="searchInput" placeholder="Search or copy a valid URL" required>
+        <button type="submit">Search</button>
+    </form>
+
+    <!-- Circular Loader -->
+    <div id="loader"></div>
+
+    <div id="results"></div>
+
+
+
+<script>
+
+const loader = document.getElementById("loader");
+
+document.getElementById("searchForm").addEventListener("submit", async e => {
+    e.preventDefault();
+    const query = document.getElementById("searchInput").value.trim();
+
+    // Mostra loader
+    loader.style.display = "block";
+
+    if (query.startsWith("http")) {
+        fetch("/download", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ query })
+        })
+        .then(res => {
+            const title = res.headers.get("X-Video-Title") || "video";
+            return res.blob().then(blob => ({ blob, title }));
+        })
+        .then(({ blob, title }) => {
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `${title}.mp3`;
+            a.click();
+            a.remove();
+        })
+        .finally(() => {
+            // Nascondi loader
+            loader.style.display = "none";
+        });
+        return;
+    }
+
+    // 🔑 Altrimenti fai la ricerca
+    try {
+        const res = await fetch("/search", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ query })
+        });
+
+        const data = await res.json();
+        const resultsDiv = document.getElementById("results");
+        resultsDiv.innerHTML = "";
+
+        data.videos.forEach(v => {
+            resultsDiv.innerHTML += `
+                <div style="margin:10px;">
+                    <img src="${v.thumbnail}" width="200"><br>
+                    <strong>${v.title}</strong><br>
+                    <button onclick="download('${v.id}', '${v.title.replace(/'/g, "\\'")}')">Scarica MP3</button>
+                </div>
+            `;
+        });
+    } finally {
+        // Nascondi loader
+        loader.style.display = "none";
+    }
+});
+
+function download(id, title) {
+    loader.style.display = "block"; // mostra loader durante download
+
+    fetch("/download", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, title })
+    })
+    .then(res => res.blob())
+    .then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${title}.mp3`;
+        a.click();
+        a.remove();
+    })
+    .finally(() => {
+        loader.style.display = "none"; // nascondi loader
+    });
+}
+
+
+
+function renderResults(videos) {
+    const resultsDiv = document.getElementById("results");
+    resultsDiv.innerHTML = "";
+
+    videos.forEach(v => {
+        resultsDiv.innerHTML += `
+            <div class="result-item">
+                <img src="${v.thumbnail}" alt="${v.title}">
+                <p><strong>${v.title}</strong></p>
+                <button onclick="download('${v.id}')">Scarica MP3</button>
+            </div>
+        `;
+    });
+}
+
+</script>
+
+</body>
+</html>
